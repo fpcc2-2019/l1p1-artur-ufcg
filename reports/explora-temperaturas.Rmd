@@ -1,5 +1,9 @@
 ---
-title: "Temperatura JP x CG"
+title: |
+    | Lab 1, P1 
+    | Artur Alves de Farias 
+    |
+    | Temperatura JP x CG
 output:
     html_document:
     df_print: paged
@@ -8,41 +12,155 @@ theme: sandstone
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 library(tidyverse)
+library(knitr)
 library(here)
 library(lubridate)
 library(ggbeeswarm)
 theme_set(theme_bw())
 ```
 
-```{r read}
-climas = read_csv(here::here("data/clima_cg_jp-semanal.csv"), 
-                  col_types = "cTdddddd")
+### Escolha e responda 2 das perguntas sobre temperatura e 2 das perguntas sobre chuva escritas lá. Para cada resposta, gere uma ou mais visualizações dos dados, e escreva um parágrafo que deixa clara qual a sua(s) conclusão/ões.
+<br/>
 
+Os dados foram disponibilizados e se encontra em um arquivo CSV, onde abaixo, atribuímos à variável **climas**.
+
+```{r read}
+climas = read_csv(here::here("data/clima_cg_jp-semanal.csv"), col_types = "cTdddddd")
+```
+
+<br/>
+Um passo importante antes de se começar uma análise é verificar como são os dados que serão utilizados. Podemos ver abaixo, que são pouco menos de 3 mil registros, e que cada registro contém 8 variáveis, sendo algumas delas: a **cidade** onde ocorreu a medição, algumas referentes às **temperaturas**, como também a quantidade de **chuva** e quando ocorreram estas medições. 
+
+```{r, warning=FALSE}
 glimpse(climas)
 ```
 
+A variável **cidade** é uma variável qualitativa e que será utilizada nas análises de algumas das perguntas do exercício. Para analisarmos melhor como estão estes dados estão distribuídos, vamos verificar algumas informações sobre os dados separando-os pela cidade.
+
+```{r}
+kable(
+    climas %>%
+        group_by(cidade) %>%
+        summarise("Total" = n(), "Ano Mais Distante" = min(ano), "Ano Mais Recente" = max(ano))
+)
+```
+
+Podemos verificar que há mais dados da cidade de João Pessoa do que de Campina Grande, além de notarmos que o período coletado também é divergente, já que os dados de Campina Grande se iniciam em **1992**, enquanto o de João Pessoa em **1987**.
+
 ## Temperatura
 
-### Onde é mais quente?
+Como observado anteriormente nas análises dos dados e variáveis, foi possível identificar três variáveis que se referem à temperatura, sendo elas:
 
+| Variável   | Descrição                      |
+|------------|--------------------------------|
+| **tmedia** | Temperatura média.             |
+| **tmax**   | Temperatura máxima registrada. |
+| **tmin**   | Temperatura mínima registrada. |
 
-### As temperaturas máximas semanais (o pico do calor) são tão diferentes quanto as médias? Mais?  
+Para checarmos se estas variáveis apresentam algum tipo de dado que não condiza com a realidade (ou senso comum, como, uma temperatura negativa nesta região), vamos verificar quais os maiores e menores valores medidos em cada cidade para cada uma destas variáveis.
 
+```{r}
+kable(
+    climas %>%
+        group_by("Cidade" = cidade) %>%
+        summarise("Maior Temp. Máx." = max(tmax), "Menor Temp. Máx." = min(tmax), 
+                  "Maior Temp. Min." = max(tmin), "Menor Temp. Min." = min(tmin),
+                  "Maior Temp. Média" = max(tmedia), "Menor Temp. Média" = min(tmedia))
+)
+```
 
-### Quais os meses mais quentes e mais frios? 
+É possível verificar que o intervalo em que os valores estão distribuídos em todas as variáveis são entre **15ºC** e **35ºC**, bem condizente com o clima da região Nordeste do Brasil.
 
+### 1. Onde é mais quente?
 
-### Qual foi o São João  mais frio de CG que está nos nossos dados?
+Primeiramente, é necessário definir o conceito do que seria **"ser mais quente"**. 
 
+Se levarmos em conta que mais quente é a maior temperatura registrada durante o dia, ou seja, o pico atingido levando as pessoas a terem uma sensação de "mais quente" para o dia todo, podemos analisar da seguinte maneira:
+
+```{r}
+climas %>%
+    group_by(cidade) %>%
+    ggplot(mapping = aes(x = cidade, y = tmax)) +
+    geom_jitter(alpha = 0.3, colour = "red") +
+    xlab("Cidade") + ylab("Temp. Máxima")
+```
+
+A partir do gráfico vemos uma maior concentração de **picos** de temperatura em João Pessoa, enquanto em Campina Grande os picos estão mais distribuídos. Porém, se olharmos para os pontos mais altos, Campina Grande apresenta os maiores picos.
+
+Se modificarmos esta abordagem do que é "mais quente" para a variável de **"Temperatura Média"**, ou seja, em mais dias, qual a **probabilidade** de uma temperatura X ser medida?
+
+```{r}
+climas %>%
+    group_by(cidade) %>%
+    ggplot(mapping = aes(x = cidade, y = tmedia)) +
+    geom_jitter(alpha = 0.3, colour = "red") +
+    xlab("Cidade") + ylab("Temp. Média")
+```
+
+Quando levamos em consideração a temperatura média, João Pessoa apresentam os pontos mais concentrados e de maiores valores, enquanto Campina Grande apresenta seus pontos mais dispersos e mais abaixo do gráfico.
+
+**Conclusão:** Analisando as duas visualizações, temos que a temperatura em João Pessoa varia menos, pois, seus picos são concentrados, assim como sua tempuratura média. Apesar de Campina Grande atingir picos até mais altos que João Pessoa em uma boa proporção, a temperatura média da cidade se mantém bem abaixo de forma geral em relação a João Pessoa.
+
+Sendo assim, é afirmado que a cidade de **João Pessoa é mais quente que a de Campina Grande**.
+
+### 2. Quais os meses mais quentes e mais frios? 
+
+Para esta pergunta, vamos analisar as variáveis **temperatura média** e **meses**. 
+
+Calculando a média total das temperaturas médias para cada um dos meses, independemente da cidade, temos:
+
+```{r}
+climas %>%
+    group_by(mes) %>%
+    summarise(media = mean(tmedia)) %>%
+    ggplot(mapping = aes(x = mes, y = media)) +
+    geom_col(fill = "blue") +
+    scale_x_continuous(
+        breaks = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12), 
+        labels = c("Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez")
+    ) + 
+    xlab("Mês") + ylab("Temp. Média")
+```
+
+**Conclusão:** Os meses mais **quentes** são os de **Dezembro até Março**, pois, suas barras apresentam maior altura da barra em comparação aos demais, o que coincide com os meses do **Verão** no hemisfério Sul. Já os meses mais **frios** são os de **Junho até Agosto** em que as temperaturas médias não passam de 25ºC. Estes meses também coincidem com o **Inverno** no hemisfério Sul.
 
 
 ## Chuva
 
+Para as perguntas referentes às chuvas, iremos utilizar a variável que mediu o índice pluviométrico, ou seja, a quantidade em ml da precipitação da água num determinado local.
+
+| Variável  | Descrição                      |
+|-----------|--------------------------------|
+| **chuva** | Índice pluviométrico           |
+
 ### Quanto chove por semana em JP e CG?
 
-Como é a distribuição do volume de chuvas por semana em JP e CG? A chuva varia mais ou menos que a temperatura? O formato da distribuição é igual? 
+Vamos pegar os dados, agrupando por **cidade** e **semanas**. Como os dados já estão divididos por semana, o **group by** é realizado em cima da variável **cidade**.
 
-### No geral, onde chove mais?
+```{r}
+climas %>%
+    group_by(cidade) %>%
+    summarise(media = mean(chuva)) %>%
+    ggplot(mapping = aes(x = cidade, y = media)) +
+    geom_col(fill = "orange") +
+    xlab("Cidade") + ylab("Índice Pluviométrico (ml)")
+```
+
+**Conclusão:** A partir do gráfico, vemos uma diferença considerável entre a quantidade de precipitação da água em Campina Grande e João Pessoa. Em Campina Grande chove, em média, em torno de **14 ml** por semana, enquanto em João Pessoa a média de precipitação está em torno de **33 ml** por semana.
 
 ### A distribuição é diferente em meses específicos? 
+
+Para verificar a distribuição do índice pluviométrico por mês, iremos utilizar a visualização do **box plot**, pois assim conseguiremos ver diversas informações relevantes quanto a distribuição dos dados, como: tamanho da caixa (indicando a concentração dos pontos), a amplitude (indicando as extremidades), além das medianas.
+
+```{r}
+ggplot(climas, aes(x = as.factor(mes), y = chuva)) +
+    geom_boxplot() +
+    scale_x_discrete(
+       labels = c("Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez") 
+    ) +
+    xlab("Mês") + ylab("Índice Pluviométrico (ml)")
+```
+
+
+**Conclusão:** Podemos verificar que sim, há uma diferença nas distribuições mês a mês. De acordo com a visualização do gráfico de *box plot*, é possível verificar que os meses de **Junho e Julho** tem uma distribuição bem mais dispersa, enquanto os mesmo de **Outubro e Novembro** tem uma distribuição bem mais concentrada.
 
